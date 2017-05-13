@@ -14,16 +14,16 @@ library(forecast)
 ```
 
 ```{r}
-divy <- read_csv("Divy_daily_duration.csv")
+divvy <- read_csv("data/divvy_daily_duration.csv")
 
-divy$date <- mdy(divy$`START TIME`)
-divy$`START TIME` <- NULL
-divy$duration <- divy$`TRIP DURATION`
-divy$`TRIP DURATION` <- NULL
+divvy$date <- mdy(divvy$`START TIME`)
+divvy$`START TIME` <- NULL
+divvy$duration <- divvy$`TRIP DURATION`
+divvy$`TRIP DURATION` <- NULL
 
-divy2 <- divy %>% group_by(week = as.POSIXct(cut(date, "week"))) %>% summarise(weekly_rides = sum(duration))
+divvy2 <- divvy %>% group_by(week = as.POSIXct(cut(date, "week"))) %>% summarise(weekly_rides = sum(duration))
 
-#decompose(divy2, type = "additive")
+#decompose(divvy2, type = "additive")
 ```
 
 
@@ -31,54 +31,55 @@ divy2 <- divy %>% group_by(week = as.POSIXct(cut(date, "week"))) %>% summarise(w
 ```{r}
 library(xts)
 
-divy_ts <- xts(divy2$weekly_rides, order.by = divy2$week)
+divvy_ts <- xts(divvy2$weekly_rides, order.by = divvy2$week)
 
-divy_ts2 <- ts(divy_ts, start = c(2013, 25), frequency = 52)
-autoplot(divy_ts2)
-ggseasonplot(divy_ts2)
-autoplot(decompose(divy_ts2))
+divvy_ts2 <- ts(divvy_ts, start = c(2013, 25), frequency = 52)
+autoplot(divvy_ts2)
+ggseasonplot(divvy_ts2)
+autoplot(decompose(divvy_ts2))
 ```
 
 Try damped ETS
 
 ```{r}
-fit1 <- ets(divy_ts2, damped = TRUE)
+fit1 <- ets(divvy_ts2, damped = TRUE)
 autoplot(fit1)
 autoplot(forecast(fit1, h = 7))
 ```
 
 
 ```{r}
-fit2 <- hw(divy_ts2, seasonal = "multiplicative", h = 7)
+fit2 <- hw(divvy_ts2, seasonal = "multiplicative", h = 7)
 
 ```
 
 Try monthly data
 
 ```{r}
-divvy <- read_csv("divvy_monthly.csv")
+divvy <- read_csv("data/divvy_monthly.csv")
 
-divvy$date <- mdy(divvy$`START TIME`)
+divvy$date <- mdy_hms(divvy$`START TIME`)
+
 divvy$`START TIME` <- NULL
 divvy$duration <- divvy$`TRIP DURATION`
 divvy$`TRIP DURATION` <- NULL
 
-
+divvy <- divvy %>% filter(date > "2014-01-01")
 divvy_ts <- xts(divvy$duration, order.by = divvy$date)
 divvy_ts <- ts(divvy_ts, start = c(2013, 6), frequency = 12)
 autoplot(divvy_ts)
 ```
 
-This does not look right! Somehow my monthly data is almost a horizontal flip from what the data looks like on the Chicago data portal.
+
 
 
 Try some other methods on weekly data. Let's try seasonal naive
 
 ```{r}
-fit3 <- snaive(divy_ts2, h=7, lambda = 0)
+fit3 <- snaive(divvy_ts2, h=7, lambda = 0)
 autoplot(forecast(fit3))
 ```
 ```{r}
-fit4 <- stlm(divy_ts2, method = "ets", lambda = 0)
+fit4 <- stlm(divvy_ts2, method = "ets", lambda = 0)
 ```
 
