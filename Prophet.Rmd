@@ -1,0 +1,18 @@
+---
+title: "Prophet"
+author: "Keith Hultman"
+date: "5/13/2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+I decided to read more about Facebook’s new R and Python package for forecasting called Prophet. Here is the [Prophet academic paper](https://facebookincubator.github.io/prophet/static/prophet_paper_20170113.pdf) describing their method. 
+
+Prophet uses a decomposable time series model
+$$Y(t) = g(t) + s(t) + h(t) + \epsilon_t$$
+Where $g(t)$ is a growth function for trend and cyclic patterns, $s(t)$ is the seasonal component, $h(t)$ is a holiday component that can accept irregularly scheduled holidays, and $\epsilon_t$ is a normally distributed error. 
+
+I wanted to look further into this method because it can handle multiple seasonality, which is a problem I've been tackling with my Divvy bike traffic project. What's interesting about their framing, is that it explicitly attempts to model growth, and one of the methods for modeling growth is based off of an ecological equation used to measure population growth in an ecosystem. 
+
+I was completely lost when they described their multiple seasonality component, since it involved a Fourier series and it has been way too long since I attempted to grapple that concept. 
