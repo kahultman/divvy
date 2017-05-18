@@ -54,22 +54,31 @@ divvy_m <- divvy %>% group_by(month = as.POSIXct(cut(date, "month"))) %>% summar
 Let's split out the latter half of 2016 as a test set so that we can examine how well our models predict future Divvy bick rider duration. 
 
 ```{r}
-test_cutoff <- as.POSIXct("06-01-2016")
-divvy_ 
+divvy_d_test <- divvy_xts[20160701/20161231]
+divvy_w_test <- divvy_w %>% filter(week >= "2016-07-01")
+divvy_m_test <- divvy_m %>% filter(month >= "2016-07-01")
+
+divvy_d_train <- divvy_xts[2013/20160701]
+divvy_w_train <- divvy_w %>% filter(week < "2016-07-01")
+divvy_m_train <- divvy_m %>% filter(month < "2016-07-01")
+
+tail(divvy_m_train)
+divvy_m_train <- xts(divvy_m_train$monthly_rides, order.by = divvy_m_train$month)
+
 ```
 
 
 Try damped ETS
 
 ```{r}
-fit1 <- ets(divvy_ts2, damped = TRUE)
+fit1 <- ets(divvy_m_train, damped = TRUE)
 autoplot(fit1)
 autoplot(forecast(fit1, h = 7))
 ```
 
 
 ```{r}
-fit2 <- hw(divvy_ts2, seasonal = "multiplicative", h = 7)
+fit2 <- hw(divvy_, seasonal = "multiplicative", h = 7)
 
 ```
 
@@ -101,5 +110,24 @@ autoplot(forecast(fit3))
 ```
 ```{r}
 fit4 <- stlm(divvy_ts2, method = "ets", lambda = 0)
+```
+
+
+## Try Prophet on monthly data
+
+```{r}
+library(prophet)
+divvy_m_prophet <- divvy_m
+divvy_m_prophet$ds <- divvy_m_prophet$month
+divvy_m_prophet$y <- divvy_m_prophet$monthly_rides
+
+m <- prophet(divvy_m_prophet)
+
+future <- make_future_dataframe(m, periods = 12)
+tail(future)
+
+forecast <- predict(m, future)
+
+plot(m, forecast)
 ```
 
