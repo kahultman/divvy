@@ -1,46 +1,63 @@
 ---
-title: "Chicago Divvy"
+title: "Forecasting Chicago Divvy Bike Ridership"
 author: "Keith Hultman"
 date: "April 22, 2017"
 output: html_notebook
 ---
 
-Let's explore some Divvy bike data from Chicago.
+## Introduction
 
-```{r, message=FALSE, warning=FALSE}
+Divvy is a bike sharing system for the city of Chicago that provides residents and tourists an option for getting around the city. After patrons purchase a daily or annual pass, they can unlock a bike, ride to their destination, and return the bike to one of the Divvy bike docking stations found throughout the city. The daily and annual pass includes 30 minutes of riding time, with additional fees for longer trips. The program is designed to promote short one-way trips to increase sharing of the bikes throughout the day. 
+
+The ability to forecast Divvy bike use would be beneficial for the following reasons
+
+1. Forecasting into the next season would allow for the Divvy program to plan on future expansion or price changes to opimize bike use or profitability.
+2. On a granular level, identifying the patterns of use for each bike station would allow the Divvy program to opimize bike placement and availability. Stations that are predicted to have increasing use can be expanded for additional Divvy bike slots, and it may be necessary to transport bikes from one station to another.
+3. The Divvy program can be used as a measure of transportation activity in the city and can be a measure for identifying how people move about the city on a day-to-day and week-to-week basis. 
+
+## Exploring the Divvy data
+
+I will first try to model the daily duration of Divvy rides for all bike stations in the city. The data was collected from the [City of Chicago Data Portal](https://data.cityofchicago.org). The original data was summarized using the Data Portal Filter by summing the daily duration of each trip, and then exported to a csv file. The summarized data is public and available [here](https://data.cityofchicago.org/Transportation/Divy_daily_duration/3hs6-p2qv).
+
+```{r Load Data, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(lubridate)
 library(forecast)
-```
 
-```{r}
 divvy <- read_csv("data/divvy_daily_duration.csv")
 
 divvy$date <- mdy(divvy$`START TIME`)
 divvy$`START TIME` <- NULL
 divvy$duration <- divvy$`TRIP DURATION`
 divvy$`TRIP DURATION` <- NULL
-
-divvy2 <- divvy %>% group_by(week = as.POSIXct(cut(date, "week"))) %>% summarise(weekly_rides = sum(duration))
-
-#decompose(divvy2, type = "additive")
 ```
 
+First we will look at the overall time series and examine its features. 
 
-
-```{r}
+```{r fig_1, fig.cap="Divvy Bike Time Series"}
 library(xts)
 
-divvy_ts <- xts(divvy2$weekly_rides, order.by = divvy2$week)
+divvy_xts <- xts(divvy$duration, order.by = divvy$date)
+plot(divvy_xts, main= "Divvy daily ridership duration", ylab="Hours per day")
+```
 
-divvy_ts2 <- ts(divvy_ts, start = c(2013, 25), frequency = 52)
-autoplot(divvy_ts2)
-ggseasonplot(divvy_ts2)
-autoplot(decompose(divvy_ts2))
+I am using the extended time series object in R (xts), since the data has two levels of seasonality: weekly and yearly. 
+
+To explore annual trends we can combine the data into a weekly and monthly series.
+
+```{r}
+divvy_w <- divvy %>% group_by(week = as.POSIXct(cut(date, "week"))) %>% summarise(weekly_rides = sum(duration))
+divvy_m <- divvy %>% group_by(month = as.POSIXct(cut(date, "month"))) %>% summarise(monthly_rides = sum(duration))
 ```
 
 
-Let's split out 2016 as a test set. 
+Let's split out the latter half of 2016 as a test set so that we can examine how well our models predict future Divvy bick rider duration. 
+
+```{r}
+test_cutoff <- as.POSIXct("06-01-2016")
+divvy_ 
+```
+
 
 Try damped ETS
 
