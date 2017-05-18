@@ -1,10 +1,10 @@
 ---
 title: "Prophet"
 author: "Keith Hultman"
-date: "5/13/2017"
+date: "May 13, 2017"
 output:
+  html_notebook: default
   pdf_document: default
-  html_document: default
 ---
 
 I decided to read more about Facebook’s new R and Python package for forecasting called Prophet. Here is the [Prophet academic paper](https://facebookincubator.github.io/prophet/static/prophet_paper_20170113.pdf) describing their method. 
@@ -16,3 +16,24 @@ Where $g(t)$ is a growth function for trend and cyclic patterns, $s(t)$ is the s
 I wanted to look further into this method because it can handle multiple seasonality, which is a problem I've been tackling with my Divvy bike traffic project. What's interesting about their framing, is that it explicitly attempts to model growth, and one of the methods for modeling growth is based off of an ecological equation used to measure population growth in an ecosystem. 
 
 I was completely lost when they described their multiple seasonality component, since it involved a Fourier series and it has been way too long since I attempted to grapple that concept. 
+
+```{r}
+library(prophet)
+library(tidyverse)
+library(lubridate)
+divvy <- read_csv("data/divvy_daily_duration.csv")
+divvy$ds <- mdy(divvy$`START TIME`)
+divvy$`START TIME` <- NULL
+divvy$y <- divvy$`TRIP DURATION`
+divvy$`TRIP DURATION` <- NULL
+
+str(divvy)
+m <- prophet(divvy)
+
+future <- make_future_dataframe(m, periods = 365)
+tail(future)
+
+forecast <- predict(m, future)
+
+plot(m, forecast)
+```
