@@ -39,6 +39,9 @@ ggseasonplot(divvy_ts2)
 autoplot(decompose(divvy_ts2))
 ```
 
+
+Let's split out 2016 as a test set. 
+
 Try damped ETS
 
 ```{r}
