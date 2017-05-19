@@ -2,7 +2,9 @@
 title: "Forecasting Chicago Divvy Bike Ridership"
 author: "Keith Hultman"
 date: "April 22, 2017"
-output: html_notebook
+output:
+  pdf_document: default
+  html_notebook: default
 ---
 
 ## Introduction
@@ -23,6 +25,8 @@ This project will attempt to model the daily duration of Divvy rides for all bik
 library(tidyverse)
 library(lubridate)
 library(forecast)
+library(knitr)
+library(xts)
 
 divvy <- read_csv("data/divvy_daily_duration.csv")
 
@@ -35,9 +39,10 @@ divvy$`TRIP DURATION` <- NULL
 First we will look at the overall time series and examine its features. 
 
 ```{r Time series plot, fig.cap="Divvy Bike Time Series"}
-library(xts)
 divvy_xts <- xts(divvy$duration, order.by = divvy$date)
-autoplot(divvy_xts) + ggtitle("Divvy daily ridership duration") + ylab("Hours per day") + xlab("Year")
+fig1 <- autoplot(divvy_xts) + ggtitle("Divvy daily ridership duration") + ylab("Hours per day") + xlab("Year")
+ggsave(fig1, filename = "fig1.png", device = png)
+fig1
 ```
 
 We can see that ridership appears to have increased during the first three years of Divvy availability and possibly leveled off during 2016, the last year of available data. There is also clear yearly seasonality, which is expected given how difficult it is to ride a bicycle during Chicago's winters. 
@@ -46,7 +51,9 @@ We can see that ridership appears to have increased during the first three years
 
 ```{r Seasonal plot}
 divvy_ts <- ts(divvy_xts, start = c(2013, 178), frequency = 365)
-ggseasonplot(divvy_ts) + ggtitle("Seasonal plot of Divvy daily ridership")
+fig2 <- ggseasonplot(divvy_ts) + ggtitle("Seasonal plot of Divvy daily ridership")
+ggsave(fig2, filename = "fig2.png", device = png)
+fig2
 ```
 
 The first year of the Divvy program seems to have started slowly in the summer of 2013 and since then, summer has been a much more actively used time for the program. For this reason I will be only using 2014-2016 data. 
@@ -68,7 +75,9 @@ During this time, there doesn't appear to be any obvious weekly seasonality to t
 
 ```{r Subseries plot}
 divvy_w_ts <- ts(divvy_xts['2014-01-01/2016-12-31'], start = c(2014, 1), frequency = 7)
-ggsubseriesplot(divvy_w_ts) + ggtitle("Subseries plot for weekly seasonality")
+fig3 <- ggsubseriesplot(divvy_w_ts) + ggtitle("Subseries plot for weekly seasonality")
+ggsave(fig3, filename = "fig3.png", device = png)
+fig3
 ```
 
 This does look like there is some seasonality with the highest volume of traffic on Monday's and Tuesdays. 
@@ -102,7 +111,9 @@ Let's first try modeling the longer term series with monthly data, first with an
 d_ts <- ts(divvy_m_train, start = 2014, frequency = 12)
 fit1 <- ets(d_ts, damped = TRUE)
 summary(fit1)
-autoplot(forecast(fit1, h = 6))
+fig4 <- autoplot(forecast(fit1, h = 6))
+ggsave(fig4, filename = "fig4.png", device = png)
+fig4
 ```
 
 
@@ -114,8 +125,10 @@ fit1b <- ets(d_ts, model = c("AAA"), damped = TRUE)
 summary(fit1b)
 fc1 <- forecast(fit1b, h = 6)
 plot(fc1, showgap = FALSE)
+
 ```
 
+This is much better, since our seasonality has a very large effect on the overall series. 
 
 ### Arima 
 
@@ -125,29 +138,38 @@ Next, we will try exploring a seasonal Arima model. First, let's look at the ACF
 ggtsdisplay(divvy_m_train, main="Monthly Divvy Usage")
 ```
 
-Using a Lag of 12 first to remove the seasonality.
+This series is not stationary, in part because of the seasonality. Next I'll examine a differenced series with a lag of 12 to remove the seasonality and determine whether that is stationary.
 
 ```{r Differenced by 12}
 ggtsdisplay(diff(divvy_m_train, lag = 12))
 ```
 
-Then a second differencing to remove autocorrelation from first lag. 
+The PACF indicates that there is still autocorrelation from the previous lag. Taking a second difference with a lag of 1 should result in stationary series. 
 
 ```{r Differenced by 12 and 1}
 ggtsdisplay(diff(diff(divvy_m_train, lag = 12)))
 ```
 
-This now appears to be stationary. 
+Indeed, this now appears to be a stationary time series. This indicates we should model the series with an ARIMA with a nonseasonal differencing of 1 and a seasonal differencing of 12. 
 
 ```{r Arima modeling}
 fit2 <- Arima(divvy_m_train, order = c(0,1,1), seasonal = list(order = c(0,1,1), period = 12))
 fit3 <- Arima(divvy_m_train, order = c(0,1,0), seasonal = list(order = c(0,1,1), period = 12))
 fit4 <- Arima(divvy_m_train, order = c(0,1,1), seasonal = list(order = c(0,1,0), period = 12))
 fit5 <- Arima(divvy_m_train, order = c(1,1,0), seasonal = list(order = c(0,1,0), period = 12))
-fit2$aic
-fit3$aic
-fit4$aic
-fit5$aic
+fit6 <- Arima(divvy_m_train, order = c(2,1,0), seasonal = list(order = c(0,1,1), period = 12))
+fit7 <- Arima(divvy_m_train, order = c(2,1,0), seasonal = list(order = c(0,1,2), period = 12))
+
+
+arima_comp <- data.frame(ARIMA = c("(0,1,1)(0,1,1)12",
+                                   "(0,1,0)(0,1,1)12",
+                                   "(0,1,1)(0,1,0)12",
+                                   "(1,1,0)(0,1,0)12",
+                                   "(2,1,0)(0,1,1)12",
+                                   "(2,1,0)(0,1,2)12"),
+                         AIC = c(fit2$aic, fit3$aic, fit4$aic, fit5$aic, fit6$aic, fit7$aic))
+save(arima_comp, file = "arima_comp.RData")
+kable(arima_comp)
 ```
 
 The Arima model with the lowest AIC is an $ARIMA(1,1,0)(0,1,0)_{12}$
@@ -173,25 +195,39 @@ fc6 <- predict(m, future)
 plot(m, fc6)
 ```
 
+### Model comparison
+
+```{r}
+mo_comp <- data.frame(actual = divvy_m_test$monthly_rides, ets = fc1$mean, arima = fc5$mean, prophet = tail(fc6$yhat))
+
+ets_sse <- with(mo_comp, expr = sum((actual - ets)^2))
+arima_sse <- with(mo_comp, expr = sum((actual - arima)^2))
+prophet_sse <- with(mo_comp, expr = sum((actual - prophet)^2))
+
+
+mo_comp <- data.frame(Model = c("TBATS", "ARIMA", "Prophet"), "SSE" = c(ets_sse, arima_sse, prophet_sse))
+
+kable(mo_comp)
+```
+
+The prophet model has a lower SSE than the ets(A,Ad,A) model, which has a lower error rate than the $ARIMA(1,1,0)(0,1,0)_{12}$. These forecasts might be useful for longer term trends, perhaps for planning on year-to-year changes. However, for more granular predictions, we need to explore the daily time series data.
+
 ## Modeling daily Divvy durration within the year
 
 ### Combined ETS + ARMA for double seasonal modeling
 
-Let's now try and model the daily duration data using a Double-Seasonal ETS with ARMA errors. 
+Since the daily time series data have both a weekly and yearly seasonality, we need to use the msts function to specify our multiple seasons. We can then use a modeling method that will work with such multiple seasonality time series, such as a the tbats function for exponential smoothing. 
 
 ```{r}
-#ggtsdisplay(divvy_d_train)
-
 divvy_d_msts <- msts(divvy_d_train, seasonal.periods = c(7, 365.25))
 fit11 <- tbats(divvy_d_msts)
-#summary(fit11)
 fc11 <- forecast(fit11, h=184)
 plot(fc11)
-
 ```
 
+This forecast looks quite good, especially how the predicted variance scales down as the predicted point values drop, which matches the variance in the time series. 
 
-
+I am not aware of any ARIMA based methods that will work for complex seasonality, so next up is building a Prophet model.
 
 ### Prophet daily
 
@@ -209,15 +245,31 @@ prophet_plot_components(d, fc13)
 ```
 
 
+Interestingly, the prophet package interprets our weekly seasonality as having higher demand on the weekends, which makes more intuitive sense. There might be an issue with how I defined the ts object and how it defines days of the weeks. While this potential 'bug' might affect our inference for the effect that any particular day of the week has on the estimate, it should not impact our overall forecasting ability. 
 
+The Prophet model does not seem to show changing variance from summer to winter as the TBATS model did. 
 
-
-
-
-
-## Model comparisons
+### Model comparison and selection 
 
 ```{r}
+comparison <- data.frame(actual = divvy_d_test, tbats = fc11$mean, prophet = tail(fc13$yhat, 184))
 
+tbats_sse <- with(comparison, expr = sum((actual - tbats)^2))
+prophet_sse <- with(comparison, expr = sum((actual - prophet)^2))
+
+tbats_sse_1mo <- with(comparison[1:30,], expr = sum((actual - tbats)^2))
+prophet_sse_1mo <- with(comparison[1:30,], expr = sum((actual - prophet)^2))
+
+comp <- data.frame(Model = c("TBATS", "Prophet"), "SSE.1Mo" = c(tbats_sse_1mo, prophet_sse_1mo), "SSE.6Mo" = c(tbats_sse, prophet_sse))
+
+kable(comp)
 ```
+
+The Prophet model beats the TBATS model for both short (1-Month) estimates and longer term (6 month) estimates. These two models both incorporate the weekly and annual seasonality of the data. The Prophet model also seems to show an additional fluxuation to the fitted pattern that is not quite a monthly seasonality but very close. 
+
+## Conclusion and future improvements 
+
+The double seasonality of the Divvy data set required the use of advanced time series forecasting approaches, and precluded the use of simple exponential smoothing and autoregressive models. The new forecasting tool Prophet, created by Facebook, performs better than the TBATS function, from the Forecast package, in both short term and long term predictions. It also was the top model for long term monthly data as well.  
+
+One additional feature that can be added to the Prophet model is the effect of specific holidays. The highest demand day in the data set was on July 4, 2015, a holiday which also fell on a Saturday. Other years had very high demand during the days around Independence Day as well, and this effect could be included in the model. Weather variables could also be incorporated into the model, such as temperature and precipitation. However, weather is not generally known far in advance and including those features might have limited forecasting potential. 
 
