@@ -42,13 +42,22 @@ autoplot(divvy_xts) + ggtitle("Divvy daily ridership duration") + ylab("Hours pe
 
 We can see that ridership appears to have increased during the first three years of Divvy availability and possibly leveled off during 2016, the last year of available data. There is also clear yearly seasonality, which is expected given how difficult it is to ride a bicycle during Chicago's winters. 
 
-Since Divvy is used by many commuters, its possible there is also weekly seasonality as well. However, let't take a closer look at 4 weeks of data in May 2016.
+
 
 ```{r Seasonal plot}
 plot(divvy_xts['2016-05-01/2016-05-28'])
-divvy_ts <- ts(divvy_xts['2014/2016-12-31'], start = c(2014, 1), frequency = 365)
+divvy_ts <- ts(divvy_xts, start = c(2013, 178), frequency = 365)
 ggseasonplot(divvy_ts) + ggtitle("Seasonal plot of Divvy daily ridership")
 ```
+
+The first year of the Divvy program seems to have started slowly in the summer of 2013 and since then, summer has been a much more actively used time for the program. For this reason I will be only using 2014-2016 data. 
+
+Since Divvy is used by many commuters, its possible there is also weekly seasonality as well. However, let't take a closer look at 4 weeks of data in May 2016.
+
+```{r}
+
+```
+
 
 During this time, there doesn't appear to be any obvious weekly seasonality to the data. We can also examine the subseries plot for each week day over all years.  
 
@@ -66,7 +75,7 @@ divvy_w <- divvy %>% group_by(week = as.POSIXct(cut(date, "week"))) %>% summaris
 divvy_m <- divvy %>% group_by(month = as.POSIXct(cut(date, "month"))) %>% summarise(monthly_rides = sum(duration))
 ```
 
-Let's split out the latter half of 2016 as a test set so that we can examine how well our models predict future Divvy bike rider duration. 
+Let's split out the latter half of 2016 as a test set so that we can examine how well our models forecast future Divvy bike rider duration. 
 
 ```{r Train test split}
 divvy_d_test <- divvy_xts['2016-07-01/2016-12-31']
@@ -94,6 +103,11 @@ autoplot(forecast(fit1, h = 6))
 
 
 This does not appear to be a good forecast, since there is no accounting for seasonality. 
+
+```{r}
+fit1 <- ets(divvy_m_train, damped = TRUE)
+```
+
 
 ### Arima 
 
