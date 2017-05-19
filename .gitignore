@@ -3,6 +3,9 @@
 .RData
 .Ruserdata
 data/*
+images/*
+libs/*
 *nb.html
-Prophet.pdf
-Prophet.html
+*pdf
+*RData
+*.html
