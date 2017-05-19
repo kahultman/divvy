@@ -41,7 +41,12 @@ divvy_xts <- xts(divvy$duration, order.by = divvy$date)
 plot(divvy_xts, main= "Divvy daily ridership duration", ylab="Hours per day")
 ```
 
-I am using the extended time series object in R (xts), since the data has two levels of seasonality: weekly and yearly. 
+I am using the extended time series object in R (xts), since I expected both weekly and yearly seasonality. However, let't take a closer lood at 4 weeks of data in May 2016.
+
+```{r}
+plot(divvy_xts['2016-05-01/2016-05-28'])
+```
+
 
 To explore annual trends we can combine the data into a weekly and monthly series.
 
@@ -54,11 +59,11 @@ divvy_m <- divvy %>% group_by(month = as.POSIXct(cut(date, "month"))) %>% summar
 Let's split out the latter half of 2016 as a test set so that we can examine how well our models predict future Divvy bick rider duration. 
 
 ```{r}
-divvy_d_test <- divvy_xts[20160701/20161231]
+divvy_d_test <- divvy_xts['2016-07-01/2016-12-31']
 divvy_w_test <- divvy_w %>% filter(week >= "2016-07-01")
 divvy_m_test <- divvy_m %>% filter(month >= "2016-07-01")
 
-divvy_d_train <- divvy_xts[2013/20160701]
+divvy_d_train <- divvy_xts['2013/2016-07-01']
 divvy_w_train <- divvy_w %>% filter(week < "2016-07-01")
 divvy_m_train <- divvy_m %>% filter(month < "2016-07-01")
 
@@ -73,7 +78,7 @@ Let's first try modeling the longer term series with monthly data, first with an
 fit1 <- ets(divvy_m_train, damped = TRUE)
 summary(fit1)
 autoplot(fit1)
-autoplot(forecast(fit1, h = 7))
+autoplot(forecast(fit1, h = 6))
 ```
 
 Next, we will try exploring a seasonal Arima model. First, let's look at the ACF and PACF plots on the orininal series. 
@@ -109,18 +114,21 @@ fit5$aic
 
 The Arima model with the lowest AIC is an $ARIMA(1,1,0)(0,1,0)_{12}$
 
+```{r}
+forecast5 <- forecast(fit5, h=12)
+plot(forecast5)
+```
+
+
 ## Try Prophet on monthly data
 
 ```{r}
 library(prophet)
-divvy_m_prophet <- divvy_m
-divvy_m_prophet$ds <- divvy_m_prophet$month
-divvy_m_prophet$y <- divvy_m_prophet$monthly_rides
+divvy_m_prophet <- data.frame(ds = divvy_m$month, y = divvy_m$monthly_rides)
 
 m <- prophet(divvy_m_prophet)
 
 future <- make_future_dataframe(m, periods = 12)
-tail(future)
 
 forecast <- predict(m, future)
 
@@ -129,9 +137,31 @@ plot(m, forecast)
 
 ## Modeling daily Divvy durration within the year
 
+Let's now try and model the daily duration data using a Double-Seasonal ETS with ARMA errors. 
 
-Let's now try and model the 
+```{r}
+ggtsdisplay(divvy_d_train)
 
+divvy_d_msts <- msts(divvy_d_train, seasonal.periods = c(365.25))
+fit11 <- tbats(divvy_d_msts)
+fc11 <- forecast(fit11, h=184)
+plot(fc11)
+
+```
+
+```{r}
+divvy_d_prophet <- data.frame(ds = divvy$date, y = divvy$duration)
+divvy_d_prophet_train <- divvy_d_prophet %>% filter(ds < "2016-07-01")
+
+d <- prophet(divvy_d_prophet_train)
+
+future <- make_future_dataframe(d, periods = 184)
+forecast <- predict(d, future)
+
+plot(d, forecast)
+
+prophet_plot_components(d, forecast)
+```
 
 
 
