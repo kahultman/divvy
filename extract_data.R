@@ -1,5 +1,5 @@
 library(RSocrata)
-#divvy_full <- read.socrata("https://data.cityofchicago.org/resource/fg6s-gzvg.json")
+divvy_full <- read.socrata("https://data.cityofchicago.org/resource/fg6s-gzvg.json")
 
 my_divvy_full <- read.socrata("https://data.cityofchicago.org/resource/vfz4-6snt.json")
 

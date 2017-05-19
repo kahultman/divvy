@@ -67,51 +67,47 @@ divvy_m_train <- xts(divvy_m_train$monthly_rides, order.by = divvy_m_train$month
 
 ```
 
-
-Try damped ETS
+Let's first try modeling the longer term series with monthly data, first with an auto ETS damped model. 
 
 ```{r}
 fit1 <- ets(divvy_m_train, damped = TRUE)
+summary(fit1)
 autoplot(fit1)
 autoplot(forecast(fit1, h = 7))
 ```
 
+Next, we will try exploring a seasonal Arima model. First, let's look at the ACF and PACF plots on the orininal series. 
 
 ```{r}
-fit2 <- hw(divvy_, seasonal = "multiplicative", h = 7)
-
+ggtsdisplay(divvy_m_train, main="Monthly Divvy Usage")
 ```
 
-Try monthly data
+Using a Lag of 12 first to remove the seasonality.
 
 ```{r}
-divvy <- read_csv("data/divvy_monthly.csv")
-
-divvy$date <- mdy_hms(divvy$`START TIME`)
-
-divvy$`START TIME` <- NULL
-divvy$duration <- divvy$`TRIP DURATION`
-divvy$`TRIP DURATION` <- NULL
-
-divvy <- divvy %>% filter(date > "2014-01-01")
-divvy_ts <- xts(divvy$duration, order.by = divvy$date)
-divvy_ts <- ts(divvy_ts, start = c(2013, 6), frequency = 12)
-autoplot(divvy_ts)
+ggtsdisplay(diff(divvy_m_train, lag = 12))
 ```
 
-
-
-
-Try some other methods on weekly data. Let's try seasonal naive
+Then a second differencing to remove autocorrelation from first lag. 
 
 ```{r}
-fit3 <- snaive(divvy_ts2, h=7, lambda = 0)
-autoplot(forecast(fit3))
-```
-```{r}
-fit4 <- stlm(divvy_ts2, method = "ets", lambda = 0)
+ggtsdisplay(diff(diff(divvy_m_train, lag = 12)))
 ```
 
+This now appears to be stationary. 
+
+```{r}
+fit2 <- Arima(divvy_m_train, order = c(0,1,1), seasonal = list(order = c(0,1,1), period = 12))
+fit3 <- Arima(divvy_m_train, order = c(0,1,0), seasonal = list(order = c(0,1,1), period = 12))
+fit4 <- Arima(divvy_m_train, order = c(0,1,1), seasonal = list(order = c(0,1,0), period = 12))
+fit5 <- Arima(divvy_m_train, order = c(1,1,0), seasonal = list(order = c(0,1,0), period = 12))
+fit2$aic
+fit3$aic
+fit4$aic
+fit5$aic
+```
+
+The Arima model with the lowest AIC is an $ARIMA(1,1,0)(0,1,0)_{12}$
 
 ## Try Prophet on monthly data
 
@@ -130,4 +126,20 @@ forecast <- predict(m, future)
 
 plot(m, forecast)
 ```
+
+## Modeling daily Divvy durration within the year
+
+
+Let's now try and model the 
+
+
+
+
+
+
+
+
+
+
+
 
