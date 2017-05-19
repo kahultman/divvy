@@ -17,7 +17,7 @@ The motivation to forecast Divvy bike use would be beneficial for Divvy's operat
 
 ## Exploring the Divvy data
 
-I will first try to model the daily duration of Divvy rides for all bike stations in the city. The data was collected from the [City of Chicago Data Portal](https://data.cityofchicago.org). The original data was summarized using the Data Portal Filter by summing the daily duration of each trip, and then exported to a csv file. The summarized data is public and available [here](https://data.cityofchicago.org/Transportation/Divy_daily_duration/3hs6-p2qv). The duration is total hours of bike usage per day. 
+This project will attempt to model the daily duration of Divvy rides for all bike stations in the city. The data was collected from the [City of Chicago Data Portal](https://data.cityofchicago.org). The original data was summarized using the Data Portal Filter by summing the daily duration of each trip, and then exported to a csv file. The summarized data is public and available [here](https://data.cityofchicago.org/Transportation/Divy_daily_duration/3hs6-p2qv). The duration is total hours of bike usage per day. 
 
 ```{r Load data, message=FALSE, warning=FALSE}
 library(tidyverse)
@@ -45,24 +45,29 @@ We can see that ridership appears to have increased during the first three years
 
 
 ```{r Seasonal plot}
-plot(divvy_xts['2016-05-01/2016-05-28'])
 divvy_ts <- ts(divvy_xts, start = c(2013, 178), frequency = 365)
 ggseasonplot(divvy_ts) + ggtitle("Seasonal plot of Divvy daily ridership")
 ```
 
 The first year of the Divvy program seems to have started slowly in the summer of 2013 and since then, summer has been a much more actively used time for the program. For this reason I will be only using 2014-2016 data. 
 
+```{r}
+divvy_ts <- ts(divvy_xts, start = c(2014, 1), frequency = 365)
+divvy_xts <- divvy_xts['2014/2017']
+divvy <- filter(divvy, date >= "2014-01-01")
+```
+
+
 Since Divvy is used by many commuters, its possible there is also weekly seasonality as well. However, let't take a closer look at 4 weeks of data in May 2016.
 
 ```{r}
-
+plot(divvy_xts['2016-05-01/2016-05-28'])
 ```
-
 
 During this time, there doesn't appear to be any obvious weekly seasonality to the data. We can also examine the subseries plot for each week day over all years.  
 
 ```{r Subseries plot}
-divvy_w_ts <- ts(divvy_xts['2014/2016-12-31'], start = c(2014, 1), frequency = 7)
+divvy_w_ts <- ts(divvy_xts['2014-01-01/2016-12-31'], start = c(2014, 1), frequency = 7)
 ggsubseriesplot(divvy_w_ts) + ggtitle("Subseries plot for weekly seasonality")
 ```
 
@@ -71,7 +76,7 @@ This does look like there is some seasonality with the highest volume of traffic
 To explore annual trends we can combine the data into a weekly and monthly series.
 
 ```{r Roll up}
-divvy_w <- divvy %>% group_by(week = as.POSIXct(cut(date, "week"))) %>% summarise(weekly_rides = sum(duration))
+divvy_w <- divvy %>% group_by(week = as.POSIXct(cut(date, "week"))) %>% summarise(weekly_rides = sum(duration)) 
 divvy_m <- divvy %>% group_by(month = as.POSIXct(cut(date, "month"))) %>% summarise(monthly_rides = sum(duration))
 ```
 
@@ -82,11 +87,10 @@ divvy_d_test <- divvy_xts['2016-07-01/2016-12-31']
 divvy_w_test <- divvy_w %>% filter(week >= "2016-07-01")
 divvy_m_test <- divvy_m %>% filter(month >= "2016-07-01")
 
-divvy_d_train <- divvy_xts['2013/2016-07-01']
+divvy_d_train <- divvy_xts['2014/2016-07-01']
 divvy_w_train <- divvy_w %>% filter(week < "2016-07-01")
 divvy_m_train <- divvy_m %>% filter(month < "2016-07-01")
 
-tail(divvy_m_train)
 divvy_m_train <- xts(divvy_m_train$monthly_rides, order.by = divvy_m_train$month)
 ```
 
@@ -155,10 +159,10 @@ plot(forecast5)
 ```{r}
 library(prophet)
 divvy_m_prophet <- data.frame(ds = divvy_m$month, y = divvy_m$monthly_rides)
-
+divvy_m_prophet <- divvy_m_prophet %>% filter(ds < "2016-07-01")
 m <- prophet(divvy_m_prophet)
 
-future <- make_future_dataframe(m, periods = 12)
+future <- make_future_dataframe(m, periods = 6)
 
 forecast <- predict(m, future)
 
@@ -180,17 +184,26 @@ plot(fc11)
 ```
 
 ```{r}
+divvy_d_msts <- msts(divvy_d_train, seasonal.periods = c(7, 365.25))
+fit12 <- tbats(divvy_d_msts)
+fc12 <- forecast(fit12, h=184)
+plot(fc12)
+```
+
+
+## Prophet daily
+
+```{r}
 divvy_d_prophet <- data.frame(ds = divvy$date, y = divvy$duration)
 divvy_d_prophet_train <- divvy_d_prophet %>% filter(ds < "2016-07-01")
 
 d <- prophet(divvy_d_prophet_train)
-
 future <- make_future_dataframe(d, periods = 184)
-forecast <- predict(d, future)
+fc13 <- predict(d, future)
 
-plot(d, forecast)
+plot(d, fc13)
 
-prophet_plot_components(d, forecast)
+prophet_plot_components(d, fc13)
 ```
 
 
@@ -202,4 +215,7 @@ prophet_plot_components(d, forecast)
 
 
 
+```{r}
+fc11
+```
 
