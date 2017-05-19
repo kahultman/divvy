@@ -1,0 +1,47 @@
+---
+title: "Forecasting Divvy Ridership"
+subtitle: "Predicting demand of the Chicago bike share program"
+author: "Keith Hultman"
+date: "2017/05/19"
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+library(knitr)
+```
+
+background-image: url(images/divvy.png)
+
+
+
+---
+# Divvy Bikesharing 
+
+* Divvy is the Chicago bike sharing program under the Chicago Dept of Transportation
+* 6,000 bikes at 580 bike stations
+* Daily and Annual passes include 30 minute time allotments for short commutes/rides
+
+background-image: url(images/divvy_pay.jpg)
+
+---
+# Divvy Data
+
+
+
+```{r}
+
+```
+
+---
+
+![](images/fig1.png)
+
+
+![](images/fig2.png)
