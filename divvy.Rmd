@@ -3,8 +3,9 @@ title: "Forecasting Chicago Divvy Bike Ridership"
 author: "Keith Hultman"
 date: "April 22, 2017"
 output:
-  pdf_document: default
   html_notebook: default
+  html_document: default
+  pdf_document: default
 ---
 
 ## Introduction
@@ -41,7 +42,6 @@ First we will look at the overall time series and examine its features.
 ```{r Time series plot, fig.cap="Divvy Bike Time Series"}
 divvy_xts <- xts(divvy$duration, order.by = divvy$date)
 fig1 <- autoplot(divvy_xts) + ggtitle("Divvy daily ridership duration") + ylab("Hours per day") + xlab("Year")
-ggsave(fig1, filename = "fig1.png", device = png)
 fig1
 ```
 
@@ -52,7 +52,6 @@ We can see that ridership appears to have increased during the first three years
 ```{r Seasonal plot}
 divvy_ts <- ts(divvy_xts, start = c(2013, 178), frequency = 365)
 fig2 <- ggseasonplot(divvy_ts) + ggtitle("Seasonal plot of Divvy daily ridership")
-ggsave(fig2, filename = "fig2.png", device = png)
 fig2
 ```
 
@@ -76,7 +75,6 @@ During this time, there doesn't appear to be any obvious weekly seasonality to t
 ```{r Subseries plot}
 divvy_w_ts <- ts(divvy_xts['2014-01-01/2016-12-31'], start = c(2014, 1), frequency = 7)
 fig3 <- ggsubseriesplot(divvy_w_ts) + ggtitle("Subseries plot for weekly seasonality")
-ggsave(fig3, filename = "fig3.png", device = png)
 fig3
 ```
 
@@ -112,7 +110,6 @@ d_ts <- ts(divvy_m_train, start = 2014, frequency = 12)
 fit1 <- ets(d_ts, damped = TRUE)
 summary(fit1)
 fig4 <- autoplot(forecast(fit1, h = 6))
-ggsave(fig4, filename = "fig4.png", device = png)
 fig4
 ```
 
@@ -189,9 +186,7 @@ divvy_m_prophet <- divvy_m_prophet %>% filter(ds < "2016-07-01")
 m <- prophet(divvy_m_prophet)
 
 future <- make_future_dataframe(m, periods = 6, freq = 'month')
-
 fc6 <- predict(m, future)
-
 plot(m, fc6)
 ```
 
@@ -203,8 +198,6 @@ mo_comp <- data.frame(actual = divvy_m_test$monthly_rides, ets = fc1$mean, arima
 ets_sse <- with(mo_comp, expr = sum((actual - ets)^2))
 arima_sse <- with(mo_comp, expr = sum((actual - arima)^2))
 prophet_sse <- with(mo_comp, expr = sum((actual - prophet)^2))
-
-
 mo_comp <- data.frame(Model = c("TBATS", "ARIMA", "Prophet"), "SSE" = c(ets_sse, arima_sse, prophet_sse))
 
 kable(mo_comp)
@@ -238,9 +231,7 @@ divvy_d_prophet_train <- divvy_d_prophet %>% filter(ds < "2016-07-01")
 d <- prophet(divvy_d_prophet_train)
 future <- make_future_dataframe(d, periods = 184)
 fc13 <- predict(d, future)
-
 plot(d, fc13)
-
 prophet_plot_components(d, fc13)
 ```
 
