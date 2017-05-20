@@ -9,3 +9,4 @@ libs/*
 *pdf
 *RData
 *.html
+*.png
